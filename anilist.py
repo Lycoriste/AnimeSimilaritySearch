@@ -1,6 +1,6 @@
 import requests, csv, time, random
-from html_cleaning import clean_html
-from rate_bypass import exponential_backoff_fetch
+from helper.html_cleaning import clean_html
+from helper.rate_bypass import exponential_backoff_fetch
 
 API_URL = "https://graphql.anilist.co"
 
@@ -46,7 +46,7 @@ query ($page: Int, $perPage: Int) {
 
 # Returns anime_id from anime_name
 def fetch_anime_id(anime_name: str):
-    resp = requests.post(API_URL, json={
+    resp = exponential_backoff_fetch(API_URL, json={
         "query": ANIME_ID_QUERY,
         "variables": {"search": anime_name}
     })
@@ -71,9 +71,19 @@ def fetch_top_review(anime, page:int = 1, per_page:int = 1, clean: bool = True):
     })
     resp.raise_for_status()
     payload = resp.json()
-    reviews = payload.get("data", {}).get("Media").get("reviews")
+    media = payload.get("data", {}).get("Media")
+    if not media:
+        print(f"No media found for anime ID: {anime_id}")
+        return None
 
-    top_review = reviews["nodes"][0]["body"]
+    reviews = media.get("reviews", {})
+    nodes = reviews.get("nodes", [])
+
+    if not nodes:   # If there are no reviews available
+        return None
+
+    top_review = nodes[0]["body"]
+
     if clean:
         top_review = clean_html(top_review)
 
@@ -97,7 +107,7 @@ def collect_anime_review(filename: str, num_anime: int = 500):
     page = 1
     per_page = 50
 
-    with open(filename, "w", newline="", encoding="utf-8") as f:
+    with open(f"data/{filename}", "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["anime_id", "top_review"])
         while current < num_anime:
@@ -113,12 +123,14 @@ def collect_anime_review(filename: str, num_anime: int = 500):
                     if top_review:
                         writer.writerow([anime_id, top_review])
                         current += 1
+                        print(f"Page: {page}, Anime_ID: {anime_id}")
+                    else:
+                        print(f"Skipped anime {anime_id} (no reviews)")
 
                 page += 1
-                time.sleep(1)
+                time.sleep(random.uniform(4, 8))
             except Exception as e:
                 print(f"Error on page {page}: {e}")
                 time.sleep(10)
-                continue
 
-collect_anime_review("rate_limit.csv")
+collect_anime_review("data.csv")
