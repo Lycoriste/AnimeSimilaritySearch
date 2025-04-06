@@ -1,5 +1,7 @@
-import os
-import requests
+import os, sys
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(parent_dir)
+
 import pandas as pd
 import torch
 from sentence_transformers import SentenceTransformer
@@ -9,63 +11,11 @@ from anilist import fetch_anime_id, fetch_anime_name
 # Load the multilingual model
 model = SentenceTransformer('intfloat/multilingual-e5-large-instruct')
 
-# def get_anime_id(anime_name):
-#     """
-#     Query the AniList API to find the anime ID for the given anime name.
-#     """
-#     url = "https://graphql.anilist.co"
-#     query = '''
-#     query ($search: String) {
-#       Media(search: $search, type: ANIME) {
-#         id
-#       }
-#     }
-#     '''
-#     variables = {'search': anime_name}
-#     response = requests.post(url, json={'query': query, 'variables': variables})
-#     if response.status_code == 200:
-#         data = response.json()
-#         return data.get('data', {}).get('Media', {}).get('id', None)
-#     else:
-#         print("Error querying AniList API for ID")
-#         return None
-
-# def get_anime_name(anime_id):
-#     """
-#     Query the AniList API to get the anime name given an anime id.
-#     Convert the anime_id to a standard Python int to avoid JSON serialization issues.
-#     """
-#     url = "https://graphql.anilist.co"
-#     query = '''
-#     query ($id: Int) {
-#       Media(id: $id, type: ANIME) {
-#         title {
-#           romaji
-#           english
-#           native
-#         }
-#       }
-#     }
-#     '''
-#     variables = {'id': int(anime_id)}  # Convert to Python int to ensure JSON serialization
-#     response = requests.post(url, json={'query': query, 'variables': variables})
-#     if response.status_code == 200:
-#         data = response.json()
-#         title_info = data.get('data', {}).get('Media', {}).get('title', {})
-#         # Prefer English title if available, else romaji, then native
-#         anime_name = title_info.get('english') or title_info.get('romaji') or title_info.get('native')
-#         return anime_name
-#     else:
-#         print("Error querying AniList API for anime name")
-#         return None
-
-
-
 # Load the DataFrame which has columns: anime_id and top_review
-df = pd.read_csv('./data/data.csv')
+df = pd.read_csv('data/data.csv')
 
 # Pre-compute or load review embeddings
-embedding_file = './data/review_embeddings.pt'
+embedding_file = 'data/review_embeddings.pt'
 review_texts = df['top_review'].tolist()
 
 if os.path.exists(embedding_file):
