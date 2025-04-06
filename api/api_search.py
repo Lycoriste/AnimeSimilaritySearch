@@ -6,9 +6,9 @@ import numpy as np
 import fireducks.pandas as pd
 import torch
 from sentence_transformers import SentenceTransformer
-from anilist import fetch_anime_id, fetch_anime_name, fetch_top_review
+from anilist import fetch_anime_id, fetch_anime_name, fetch_anime_media, fetch_top_review
 
-def compare_embeddings(anime_name: str, df: pd.DataFrame, model: SentenceTransformer, review_embeddings, top_g: int = 10):
+def compare_embeddings(anime_name: str, df: pd.DataFrame, model: SentenceTransformer, review_embeddings, top_g: int = 15):
     anime_id = fetch_anime_id(anime_name)
     if anime_id is None:
         return
@@ -37,14 +37,17 @@ def compare_embeddings(anime_name: str, df: pd.DataFrame, model: SentenceTransfo
     
     # Get the top #g most similar anime and use the API to get their names
     top = similarity_results[:top_g]
-    print(f"\nTop 20 similar anime to '{anime_name}' (Anime id {anime_id}):")
+    # print(f"\nTop {top_g} similar anime to '{anime_name}' (Anime id {anime_id}):")
     out = []
     for other_anime_id, score in top:
-        anime_name_result = fetch_anime_name(other_anime_id) or "N/A"
+        anime_name, cover_image, site_url = fetch_anime_media(other_anime_id)
+
         out.append({
             "anime_id": int(other_anime_id),
-            "anime_name": anime_name_result,
-            "similarity": float(score)
+            "anime_name": anime_name,
+            "similarity": float(score),
+            "image_url": cover_image,
+            "site_url": site_url
         })
 
     return out

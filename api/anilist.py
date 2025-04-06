@@ -34,6 +34,13 @@ query ($id: Int) {
       english
       native
     }
+    coverImage {
+        extraLarge
+        large
+        medium
+        color
+    }
+    siteUrl
   }
 }
 """
@@ -95,6 +102,26 @@ def fetch_anime_name(anime_id, language: str = "english"):
     anime = payload.get("data", {}).get("Media")
 
     return anime["title"][language]
+
+def fetch_anime_media(anime_id):
+    if (type(anime_id) != int):
+        try:
+            anime_id = int(anime_id)
+        except:
+            raise Exception("What data type did you feed?")
+    resp = exponential_backoff_fetch(API_URL, {
+        "query": ANIME_NAME_QUERY,
+        "variables": {"id": anime_id}
+    })
+    resp.raise_for_status()
+    payload = resp.json()
+    anime = payload.get("data", {}).get("Media")
+    anime_title = anime["title"]
+    anime_name = anime_title["english"] or anime_title["romaji"] or anime_title["native"] or "N/A"
+    cover_image = anime["coverImage"]["extraLarge"]
+    site_url = anime["siteUrl"]
+
+    return anime_name, cover_image, site_url
 
 # Returns the best review from the anime
 def fetch_top_review(anime, page:int = 1, per_page:int = 1, clean: bool = True):
