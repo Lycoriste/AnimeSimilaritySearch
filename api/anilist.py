@@ -34,6 +34,13 @@ query ($id: Int) {
       english
       native
     }
+    coverImage {
+        extraLarge
+        large
+        medium
+        color
+    }
+    siteUrl
   }
 }
 """
@@ -45,6 +52,7 @@ query ($animeId: Int, $page: Int, $perPage: Int) {
             pageInfo { hasNextPage }
             nodes { id summary body rating user { name } }
         }
+        description(asHtml: false)
     }
 }
 """
@@ -95,6 +103,26 @@ def fetch_anime_name(anime_id, language: str = "english"):
     anime = payload.get("data", {}).get("Media")
 
     return anime["title"][language]
+
+def fetch_anime_media(anime_id):
+    if (type(anime_id) != int):
+        try:
+            anime_id = int(anime_id)
+        except:
+            raise Exception("What data type did you feed?")
+    resp = exponential_backoff_fetch(API_URL, {
+        "query": ANIME_NAME_QUERY,
+        "variables": {"id": anime_id}
+    })
+    resp.raise_for_status()
+    payload = resp.json()
+    anime = payload.get("data", {}).get("Media")
+    anime_title = anime["title"]
+    anime_name = anime_title["english"] or anime_title["romaji"] or anime_title["native"] or "N/A"
+    cover_image = anime["coverImage"]["extraLarge"]
+    site_url = anime["siteUrl"]
+
+    return anime_name, cover_image, site_url
 
 # Returns the best review from the anime
 def fetch_top_review(anime, page:int = 1, per_page:int = 1, clean: bool = True):
@@ -157,6 +185,44 @@ def fetch_desc(anime, clean: bool = True):
         description = clean_html(description)
 
     return description
+
+def prod_fetch(anime, page:int = 1, per_page:int = 1, clean: bool = True):
+    if (type(anime) == str):
+        anime_id = fetch_anime_id(anime)
+    elif (type(anime) == int):
+        anime_id = anime
+    else:
+        raise Exception("Bombaclat, this is not valid.")
+    
+    resp = exponential_backoff_fetch(API_URL, {
+        "query": REVIEW_QUERY,
+        "variables": {"animeId": anime_id, "page": page, "perPage": per_page}
+    })
+    resp.raise_for_status()
+    payload = resp.json()
+    media = payload.get("data", {}).get("Media")
+    if not media:
+        print(f"No media found for anime ID: {anime_id}")
+        return None
+
+    reviews = media.get("reviews", {})
+    nodes = reviews.get("nodes", [])
+
+    if not nodes:   # If there are no reviews available
+        top_review = ""
+    else:
+        top_review = nodes[0]["body"]
+
+    description = media["description"]
+
+    if not description:   # If there are no descriptions available
+        description = ""
+
+    if clean:
+        top_review = clean_html(top_review)
+        description = clean_html(description)
+
+    return top_review, description
 
 # Get animes from Anilist pages
 def get_anime(page:int = 1, per_page: int = 50):

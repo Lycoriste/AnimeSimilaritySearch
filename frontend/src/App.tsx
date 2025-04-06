@@ -7,7 +7,7 @@ function App() {
   const [animeName, setAnimeName] = useState('');
 
   // State to hold the fetched data
-  const [data, setData] = useState(null);
+  const [data, setData] = useState<any[]>([]);
 
   // Handle input change
   const handleInputChange = (e: any) => {
@@ -35,18 +35,36 @@ function App() {
           <input 
             type="text" 
             placeholder="ANIME NAME" 
-            className="flex border p-2"
+            className="flex border p-2 rounded-lg"
             value={animeName}
             onChange={handleInputChange}
           />
-          <input type="submit" value="SUBMIT" className="flex ml-2 py-2 px-4 border"/>
+          <button type="submit" value="SUBMIT" className="flex ml-2 py-2 px-4 border rounded-lg active:bg-white">GO</button>
         </form>
-        <div>
-          {/* Render fetched data */}
+        <div className="p-4">
           {data && (
-            <div>
-              <h2>Search Results:</h2>
-              <pre>{JSON.stringify(data, null, 2)}</pre>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6">
+              {data.map((item: any) => (
+                <a
+                  key={item.anime_id}
+                  href={item.site_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center hover:opacity-80 transition"
+                >
+                  <img
+                    src={item.image_url}
+                    alt={item.anime_name}
+                    className="w-full h-auto rounded-lg shadow-md"
+                  />
+                  <span className="mt-2 text-center text-sm font-medium">
+                    {item.anime_name}
+                  </span>
+                  <span className="mt-1 text-center text-xs text-gray-500">
+                    {"Similarity: " + item.similarity}
+                  </span>
+                </a>
+              ))}
             </div>
           )}
         </div>
