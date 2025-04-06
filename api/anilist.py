@@ -52,6 +52,7 @@ query ($animeId: Int, $page: Int, $perPage: Int) {
             pageInfo { hasNextPage }
             nodes { id summary body rating user { name } }
         }
+        description(asHtml: false)
     }
 }
 """
@@ -184,6 +185,44 @@ def fetch_desc(anime, clean: bool = True):
         description = clean_html(description)
 
     return description
+
+def prod_fetch(anime, page:int = 1, per_page:int = 1, clean: bool = True):
+    if (type(anime) == str):
+        anime_id = fetch_anime_id(anime)
+    elif (type(anime) == int):
+        anime_id = anime
+    else:
+        raise Exception("Bombaclat, this is not valid.")
+    
+    resp = exponential_backoff_fetch(API_URL, {
+        "query": REVIEW_QUERY,
+        "variables": {"animeId": anime_id, "page": page, "perPage": per_page}
+    })
+    resp.raise_for_status()
+    payload = resp.json()
+    media = payload.get("data", {}).get("Media")
+    if not media:
+        print(f"No media found for anime ID: {anime_id}")
+        return None
+
+    reviews = media.get("reviews", {})
+    nodes = reviews.get("nodes", [])
+
+    if not nodes:   # If there are no reviews available
+        top_review = ""
+    else:
+        top_review = nodes[0]["body"]
+
+    description = media["description"]
+
+    if not description:   # If there are no descriptions available
+        description = ""
+
+    if clean:
+        top_review = clean_html(top_review)
+        description = clean_html(description)
+
+    return top_review, description
 
 # Get animes from Anilist pages
 def get_anime(page:int = 1, per_page: int = 50):
