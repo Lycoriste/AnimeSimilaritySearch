@@ -25,6 +25,19 @@ query ($search: String) {
 }
 """
 
+ANIME_NAME_QUERY = """
+query ($id: Int) {
+    Media(id: $id, type: ANIME) {
+    id
+    title {
+      romaji
+      english
+      native
+    }
+  }
+}
+"""
+
 REVIEW_QUERY = """
 query ($animeId: Int, $page: Int, $perPage: Int) {
     Media(id: $animeId) {
@@ -67,10 +80,15 @@ def fetch_anime_id(anime_name: str):
 
     return anime["id"]
 
-def fetch_anime_name(anime_id: int, language: str = "english"):
+def fetch_anime_name(anime_id, language: str = "english"):
+    if (type(anime_id) != int):
+        try:
+            anime_id = int(anime_id)
+        except:
+            raise Exception("What data type did you feed?")
     resp = exponential_backoff_fetch(API_URL, {
-        "query": ANIME_ID_QUERY,
-        "variables": {"animeId": anime_id}
+        "query": ANIME_NAME_QUERY,
+        "variables": {"id": anime_id}
     })
     resp.raise_for_status()
     payload = resp.json()
@@ -213,5 +231,3 @@ def collect_anime_desc(filename: str, num_anime: int = 500):
             except Exception as e:
                 print(f"Error on page {page}: {e}")
                 time.sleep(10)
-
-collect_anime_desc("desc_data.csv")
